@@ -3,7 +3,13 @@ import axios from 'axios'
 import './styles.css'
 
 const getApiBase = () => {
-  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL
+  let url = (import.meta.env.VITE_API_URL || '').trim()
+  if (url) {
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://' + url
+    }
+    return url.replace(/\/+$/, '')
+  }
   if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
     return 'http://localhost:8001'
   }
