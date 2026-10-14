@@ -5,6 +5,7 @@ __pycache__/
 *.pyd
 *.log
 *.sqlite3
+*.db
 
 # Virtual env
 .venv/
@@ -23,3 +24,8 @@ dist/
 # OS
 .DS_Store
 Thumbs.db
+
+# Binaries and local files
+bin/
+*.exe
+test_meeting.txt

@@ -75,6 +75,7 @@ def upload_meeting(file: UploadFile = File(...), db: Session = Depends(get_db)):
             pass
 
 
+@router.get("", response_model=List[schemas.Meeting])
 @router.get("/", response_model=List[schemas.Meeting])
 def list_meetings(db: Session = Depends(get_db)):
     return db.query(models.Meeting).order_by(models.Meeting.created_at.desc()).all()
