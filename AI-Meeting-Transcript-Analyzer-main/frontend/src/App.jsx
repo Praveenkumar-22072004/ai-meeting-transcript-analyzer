@@ -24,7 +24,7 @@ const SectionCard = ({ title, children }) => (
 
 const BulletList = ({ items, emptyLabel = 'Nothing yet' }) => (
   <ul className="bullet-list">
-    {items && items.length
+    {Array.isArray(items) && items.length
       ? items.map((item, idx) => (
           <li key={idx}>
             <span className="dot" />
@@ -37,7 +37,7 @@ const BulletList = ({ items, emptyLabel = 'Nothing yet' }) => (
 
 const SpeakerSegments = ({ segments }) => (
   <div className="segments">
-    {segments && segments.length ? (
+    {Array.isArray(segments) && segments.length ? (
       segments.map(seg => (
         <div key={seg.id || `${seg.start_time}-${seg.text}` } className="segment">
           <div className="segment-meta">
@@ -72,10 +72,14 @@ function App() {
     try {
       setLoadingHistory(true)
       const res = await api.get('/api/meetings')
-      setHistory(res.data)
+      if (Array.isArray(res.data)) {
+        setHistory(res.data)
+      } else {
+        setHistory([])
+      }
     } catch (err) {
       console.error(err)
-      setError('Unable to load previous meetings')
+      setHistory([])
     } finally {
       setLoadingHistory(false)
     }
@@ -164,7 +168,7 @@ function App() {
             <p className="muted">Latest files</p>
             {loadingHistory ? (
               <p className="muted">Loading…</p>
-            ) : history.length ? (
+            ) : Array.isArray(history) && history.length ? (
               <ul className="history">
                 {history.map(item => (
                   <li key={item.id}>
