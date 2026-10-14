@@ -2,7 +2,15 @@ import React, { useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
 import './styles.css'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const getApiBase = () => {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return 'http://localhost:8001'
+  }
+  return ''
+}
+
+const API_BASE = getApiBase()
 
 const SectionCard = ({ title, children }) => (
   <div className="card">
@@ -102,7 +110,11 @@ function App() {
       setHistory(prev => [res.data, ...prev])
     } catch (err) {
       console.error(err)
-      const message = err.response?.data?.detail || 'Upload failed'
+      const message =
+        err.response?.data?.detail ||
+        (err.code === 'ERR_NETWORK'
+          ? 'Backend unavailable: could not reach API. Please verify the backend service is deployed and VITE_API_URL is configured in your deployment settings.'
+          : err.message || 'Upload failed')
       setError(message)
     } finally {
       setUploading(false)

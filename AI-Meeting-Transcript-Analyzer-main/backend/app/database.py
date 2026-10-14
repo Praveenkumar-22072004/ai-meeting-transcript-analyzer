@@ -7,7 +7,7 @@ load_dotenv()
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql+psycopg2://postgres:postgres@localhost:5432/meeting_db",
+    "sqlite:///./meetings.db",
 )
 
 # Fix for Railway/Heroku postgres:// URI scheme
