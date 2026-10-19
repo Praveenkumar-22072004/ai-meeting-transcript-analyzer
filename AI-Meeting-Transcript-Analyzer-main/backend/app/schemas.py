@@ -18,6 +18,7 @@ class SpeakerSegment(SpeakerSegmentBase):
     id: int
 
     class Config:
+        from_attributes = True
         orm_mode = True
 
 
@@ -40,4 +41,5 @@ class Meeting(MeetingBase):
     speaker_segments: List[SpeakerSegment] = Field(default_factory=list)
 
     class Config:
+        from_attributes = True
         orm_mode = True

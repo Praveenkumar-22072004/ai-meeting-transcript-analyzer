@@ -1,7 +1,7 @@
 import os
 from typing import List
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app import schemas, models
@@ -17,24 +17,30 @@ ALLOWED_EXTENSIONS = {".mp3", ".mp4", ".wav", ".m4a", ".aac", ".flac", ".txt"}
 def upload_meeting(file: UploadFile = File(...), db: Session = Depends(get_db)):
     suffix = os.path.splitext(file.filename)[1].lower()
     if suffix not in ALLOWED_EXTENSIONS:
-        raise HTTPException(status_code=400, detail="Unsupported file type")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported file type '{suffix}'. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
+        )
 
     temp_path, suffix = services.handle_upload(file)
 
     try:
         if suffix == ".txt":
             transcript = services.read_text_file(temp_path)
-            segments = [{"text": t} for t in transcript.split(". ") if t.strip()]
+            segments = services.parse_text_into_segments(transcript)
         else:
             transcript, segments = services.transcribe_file(temp_path)
 
-        if not transcript:
-            raise HTTPException(status_code=500, detail="Transcription produced empty text")
+        if not transcript or not transcript.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="The uploaded file contains no audible speech or text.",
+            )
 
         summary = services.simple_summarize(transcript)
-        key_points = services.extract_bullets(transcript)
-        decisions = services.extract_bullets(transcript)
-        todos = services.extract_bullets(transcript)
+        key_points = services.extract_key_points(transcript)
+        decisions = services.extract_decisions(transcript)
+        todos = services.extract_todos(transcript)
         speaker_segments = services.infer_speakers(segments)
 
         meeting = models.Meeting(
@@ -63,14 +69,18 @@ def upload_meeting(file: UploadFile = File(...), db: Session = Depends(get_db)):
         db.refresh(meeting)
         return meeting
     except services.TranscriptionError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Upload processing failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Upload processing failed: {e}",
+        )
     finally:
         try:
-            os.remove(temp_path)
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
         except OSError:
             pass
 
@@ -85,5 +95,15 @@ def list_meetings(db: Session = Depends(get_db)):
 def get_meeting(meeting_id: int, db: Session = Depends(get_db)):
     meeting = db.query(models.Meeting).filter(models.Meeting.id == meeting_id).first()
     if not meeting:
-        raise HTTPException(status_code=404, detail="Meeting not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found")
     return meeting
+
+
+@router.delete("/{meeting_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_meeting(meeting_id: int, db: Session = Depends(get_db)):
+    meeting = db.query(models.Meeting).filter(models.Meeting.id == meeting_id).first()
+    if not meeting:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found")
+    db.delete(meeting)
+    db.commit()
+    return None
